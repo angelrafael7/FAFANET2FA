@@ -1,0 +1,82 @@
+{
+  "name": "fafanet-2fa",
+  "version": "1.0.0",
+  "description": "Gerador de Códigos 2FA - Compatível com Google Authenticator",
+  "main": "main.js",
+  "author": "FAFANET",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:win-portable": "electron-builder --win portable",
+    "build:win-nsis": "electron-builder --win nsis",
+    "build:win-installer": "electron-builder --win --x64",
+    "android:clean": "if exist capacitor.config.json del capacitor.config.json && if exist capacitor.config.ts del capacitor.config.ts",
+    "android:setup": "npm run android:clean && npx cap init \"FAFANET 2FA\" \"com.fafanet.twofa\" . && npx cap add android",
+    "android:build": "npx cap copy android && npx cap sync android",
+    "android:open": "npx cap open android",
+    "android:apk": "cd android && gradlew assembleDebug"
+  },
+  "build": {
+    "appId": "com.fafanet.twofa",
+    "productName": "FAFANET 2FA",
+    "copyright": "Copyright © 2024 FAFANET",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "**/*",
+      "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
+      "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
+      "!**/node_modules/*.d.ts",
+      "!**/*.iml",
+      "!{.editorconfig,.gitignore,.eslintrc.json,.prettierrc}",
+      "!{build,dist,logs,coverage}",
+      "!*.{md,txt,log}"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "FAFANET 2FA",
+      "installerIcon": "build/installer.ico",
+      "uninstallerIcon": "build/uninstaller.ico",
+      "license": "license.txt",
+      "menuCategory": "FAFANET"
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-portable.exe"
+    }
+  },
+  "devDependencies": {
+    "electron": "^25.0.0",
+    "electron-builder": "^24.0.0"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/cli": "^8.0.0",
+    "@capacitor/core": "^8.0.0",
+    "cordova-res": "^0.15.4"
+  }
+}

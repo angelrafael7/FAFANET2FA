@@ -1,0 +1,13 @@
+﻿{
+  "appId": "com.fafanet.twofa",
+  "appName": "FAFANET 2FA",
+  "webDir": ".",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}

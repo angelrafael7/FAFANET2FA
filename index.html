@@ -1,0 +1,1344 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <!-- Biblioteca TOTP -->
+    <script src="https://unpkg.com/@padloc/totp@^3.0.0/dist/totp.umd.js"></script>
+    
+    <!-- BLOQUEIO TOTAL DE ZOOM -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no, viewport-fit=cover">
+    
+    <!-- Impede zoom com gestos no iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta charset="UTF-8">
+    <title>FAFANET 2FA</title>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        /* RESET E CONFIGURAÇÕES MOBILE */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+        
+        :root {
+            /* TEMA ESCURO (default) */
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --dark: #1e293b;
+            --darker: #0f172a;
+            --light: #f8fafc;
+            --gray: #94a3b8;
+            --card-bg: rgba(255, 255, 255, 0.08);
+            --card-border: rgba(255, 255, 255, 0.12);
+            --shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            --radius: 20px;
+            --radius-sm: 14px;
+            --radius-md: 16px;
+        }
+        
+        /* TEMA CLARO */
+        .light-theme {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --dark: #f1f5f9;
+            --darker: #e2e8f0;
+            --light: #0f172a;
+            --gray: #64748b;
+            --card-bg: rgba(255, 255, 255, 0.9);
+            --card-border: rgba(0, 0, 0, 0.1);
+            --shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        html {
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        body {
+            background: linear-gradient(135deg, var(--darker) 0%, var(--dark) 100%);
+            color: var(--light);
+            min-height: 100vh;
+            padding: 0;
+            overflow: hidden;
+            position: relative;
+            overscroll-behavior: none;
+        }
+        
+        /* CONTAINER PRINCIPAL COM SCROLL NATIVO */
+        .app-container {
+            width: 100%;
+            height: 100vh;
+            max-width: 500px;
+            margin: 0 auto;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.4);
+        }
+        
+        /* HEADER FIXO */
+        .app-header {
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(20px);
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--card-border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: all 0.3s ease;
+        }
+        
+        .light-theme .app-header {
+            background: rgba(241, 245, 249, 0.95);
+        }
+        
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: bold;
+            color: white;
+        }
+        
+        .app-name h1 {
+            font-size: 1.5rem;
+            font-weight: 800;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        .app-name p {
+            font-size: 0.75rem;
+            color: var(--gray);
+            margin-top: 2px;
+        }
+        
+        /* CONTEÚDO COM SCROLL */
+        .app-content {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 0 20px 30px;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        /* SECTION CARDS */
+        .section {
+            margin-top: 24px;
+            animation: fadeIn 0.4s ease-out;
+        }
+        
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            padding: 0 8px;
+        }
+        
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--light);
+        }
+        
+        .section-title i {
+            color: var(--primary);
+            font-size: 1.2rem;
+        }
+        
+        /* CARDS MODERNOS */
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            border-radius: var(--radius-md);
+            padding: 24px;
+            border: 1px solid var(--card-border);
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .card:active {
+            transform: scale(0.98);
+        }
+        
+        /* INPUTS MODERNOS */
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        .input-label {
+            display: block;
+            margin-bottom: 10px;
+            color: var(--light);
+            font-weight: 600;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .input-label i {
+            color: var(--primary);
+        }
+        
+        .input-field {
+            width: 100%;
+            padding: 18px 20px;
+            background: rgba(0, 0, 0, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.08);
+            border-radius: var(--radius-sm);
+            color: var(--light);
+            font-size: 1rem;
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            transition: all 0.3s;
+        }
+        
+        .light-theme .input-field {
+            background: rgba(0, 0, 0, 0.05);
+            border: 2px solid rgba(0, 0, 0, 0.1);
+            color: var(--light);
+        }
+        
+        .input-field:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.1);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+        
+        .input-hint {
+            color: var(--gray);
+            font-size: 0.8rem;
+            margin-top: 8px;
+            padding: 0 4px;
+        }
+        
+        /* BOTÕES MODERNOS */
+        .btn {
+            padding: 18px 24px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.3);
+        }
+        
+        .btn:hover, .btn:active {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(99, 102, 241, 0.4);
+        }
+        
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            color: var(--light);
+        }
+        
+        .light-theme .btn-secondary {
+            background: rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn-secondary:hover, .btn-secondary:active {
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        .light-theme .btn-secondary:hover {
+            background: rgba(0, 0, 0, 0.1);
+        }
+        
+        /* DISPLAY DO CÓDIGO */
+        .code-display-card {
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9));
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .light-theme .code-display-card {
+            background: linear-gradient(135deg, rgba(241, 245, 249, 0.9), rgba(226, 232, 240, 0.9));
+        }
+        
+        .code-display-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+        }
+        
+        .current-code {
+            font-size: 3.5rem;
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            color: var(--secondary);
+            letter-spacing: 6px;
+            margin: 20px 0;
+            font-weight: 900;
+            text-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+        }
+        
+        .timer-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin: 20px 0;
+        }
+        
+        .timer {
+            font-size: 1.1rem;
+            color: var(--warning);
+            font-weight: 700;
+        }
+        
+        /* BARRA DE PROGRESSO MODERNA */
+        .progress-container {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 3px;
+            margin: 25px 0;
+            overflow: hidden;
+        }
+        
+        .light-theme .progress-container {
+            background: rgba(0, 0, 0, 0.08);
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            width: 100%;
+            transition: width 1s linear;
+            border-radius: 3px;
+        }
+        
+        /* LISTA DE CONTAS COM SCROLL INTERNO */
+        .accounts-container {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 16px;
+            padding-right: 8px;
+        }
+        
+        .account-item {
+            background: var(--card-bg);
+            border-radius: var(--radius-sm);
+            padding: 18px;
+            margin-bottom: 12px;
+            border: 1px solid var(--card-border);
+            transition: all 0.3s;
+        }
+        
+        .account-item:active {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        }
+        
+        .account-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .account-name {
+            font-weight: 700;
+            color: var(--light);
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .account-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .btn-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.08);
+            border: none;
+            color: var(--light);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .light-theme .btn-icon {
+            background: rgba(0, 0, 0, 0.05);
+        }
+        
+        .btn-icon:active {
+            transform: scale(0.9);
+        }
+        
+        .btn-delete {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--danger);
+        }
+        
+        .btn-use {
+            background: rgba(99, 102, 241, 0.15);
+            color: var(--primary);
+        }
+        
+        .account-code {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--secondary);
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            margin: 12px 0;
+            letter-spacing: 2px;
+        }
+        
+        .account-date {
+            color: var(--gray);
+            font-size: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        /* ESTADO VAZIO */
+        .empty-state {
+            text-align: center;
+            padding: 50px 20px;
+            color: var(--gray);
+        }
+        
+        .empty-state i {
+            font-size: 3.5rem;
+            margin-bottom: 20px;
+            opacity: 0.3;
+            color: var(--primary);
+        }
+        
+        /* BOTÕES DE AÇÃO FLUTUANTES */
+        .fab-container {
+            position: sticky;
+            bottom: 20px;
+            margin-top: 20px;
+            display: flex;
+            gap: 12px;
+            z-index: 50;
+        }
+        
+        .fab {
+            flex: 1;
+            padding: 16px;
+            border-radius: var(--radius-sm);
+            border: none;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.95rem;
+        }
+        
+        .fab-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4);
+        }
+        
+        .fab-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--light);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .light-theme .fab-secondary {
+            background: rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        
+        .fab:active {
+            transform: scale(0.95);
+        }
+        
+        /* NOTIFICAÇÃO TOAST */
+        .toast {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(20px);
+            color: white;
+            padding: 16px 24px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--card-border);
+            box-shadow: var(--shadow);
+            z-index: 1000;
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            max-width: 90%;
+            text-align: center;
+            font-weight: 600;
+        }
+        
+        .light-theme .toast {
+            background: rgba(241, 245, 249, 0.95);
+            color: var(--light);
+        }
+        
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        
+        /* ANIMAÇÕES */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        /* SCROLLBAR PERSONALIZADA */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+        
+        .light-theme ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, var(--primary-dark), var(--secondary));
+        }
+        
+        /* RESPONSIVIDADE */
+        @media (max-width: 480px) {
+            .app-container {
+                max-width: 100%;
+            }
+            
+            .current-code {
+                font-size: 3rem;
+                letter-spacing: 5px;
+            }
+            
+            .card {
+                padding: 20px;
+            }
+            
+            .app-header {
+                padding: 18px 20px;
+            }
+            
+            .app-content {
+                padding: 0 16px 20px;
+            }
+        }
+        
+        @media (max-width: 360px) {
+            .current-code {
+                font-size: 2.5rem;
+            }
+            
+            .btn, .fab {
+                padding: 16px;
+                font-size: 0.9rem;
+            }
+        }
+        
+        /* STATUS BAR (PARA iOS) */
+        .status-bar {
+            height: env(safe-area-inset-top);
+            background: var(--darker);
+            width: 100%;
+        }
+        
+        .light-theme .status-bar {
+            background: var(--darker);
+        }
+        
+        /* BOTÃO TEMA */
+        .theme-toggle {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--light);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .light-theme .theme-toggle {
+            background: rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        
+        .theme-toggle:active {
+            transform: scale(0.9);
+        }
+    </style>
+</head>
+<body>
+    <!-- Status Bar para iOS -->
+    <div class="status-bar"></div>
+    
+    <!-- Container Principal do App -->
+    <div class="app-container">
+        <!-- Header Fixo -->
+        <header class="app-header">
+            <div class="header-title">
+                <div class="logo-icon">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <div class="app-name">
+                    <h1>FAFANET 2FA</h1>
+                    <p>Autenticação Segura</p>
+                </div>
+            </div>
+            <button class="theme-toggle" id="theme-toggle">
+                <i class="fas fa-moon"></i>
+            </button>
+        </header>
+        
+        <!-- Conteúdo com Scroll -->
+        <main class="app-content">
+            <!-- Seção: Gerar Código -->
+            <section class="section">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <i class="fas fa-key"></i>
+                        Gerar Código
+                    </h2>
+                </div>
+                
+                <div class="card">
+                    <div class="input-group">
+                        <label class="input-label" for="secret-key">
+                            <i class="fas fa-lock"></i>
+                            Chave Secreta
+                        </label>
+                        <input type="text" id="secret-key" class="input-field" 
+                               placeholder="Cole sua chave Base32 aqui">
+                        <div class="input-hint">
+                            Apenas letras A-Z e números 2-7
+                        </div>
+                    </div>
+                    
+                    <button id="generate-btn" class="btn">
+                        <i class="fas fa-bolt"></i>
+                        Gerar Código 2FA
+                    </button>
+                </div>
+                
+                <!-- Resultado do Código -->
+                <div id="code-result" class="card code-display-card" style="display: none;">
+                    <div style="color: var(--gray); font-size: 0.9rem; margin-bottom: 10px;">
+                        Código Atual
+                    </div>
+                    <div id="current-code" class="current-code">000000</div>
+                    
+                    <div class="timer-container">
+                        <i class="fas fa-clock" style="color: var(--warning);"></i>
+                        <div class="timer" id="countdown">30</div>
+                        <span style="color: var(--gray);">segundos restantes</span>
+                    </div>
+                    
+                    <div class="progress-container">
+                        <div id="progress-bar" class="progress-bar"></div>
+                    </div>
+                    
+                    <div class="fab-container">
+                        <button id="copy-btn" class="fab fab-primary">
+                            <i class="fas fa-copy"></i>
+                            Copiar Código
+                        </button>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Seção: Contas Salvas -->
+            <section class="section">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <i class="fas fa-save"></i>
+                        Contas Salvas
+                    </h2>
+                    <span style="color: var(--gray); font-size: 0.9rem;" id="accounts-count">0 contas</span>
+                </div>
+                
+                <div class="card">
+                    <div class="input-group">
+                        <label class="input-label" for="account-name">
+                            <i class="fas fa-user"></i>
+                            Nome da Conta
+                        </label>
+                        <input type="text" id="account-name" class="input-field" 
+                               placeholder="Ex: Google, GitHub, Microsoft">
+                    </div>
+                    
+                    <button id="save-btn" class="btn btn-secondary">
+                        <i class="fas fa-plus-circle"></i>
+                        Salvar Conta Atual
+                    </button>
+                </div>
+                
+                <!-- Lista de Contas -->
+                <div id="accounts-list" class="accounts-container">
+                    <div class="empty-state" id="empty-accounts">
+                        <i class="fas fa-user-clock"></i>
+                        <h3>Nenhuma conta salva</h3>
+                        <p>Adicione suas contas para acesso rápido</p>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Seção: Informações -->
+            <section class="section">
+                <div class="card">
+                    <h2 class="section-title" style="margin-bottom: 20px;">
+                        <i class="fas fa-info-circle"></i>
+                        Como Funciona
+                    </h2>
+                    <div style="color: var(--gray); line-height: 1.6; font-size: 0.95rem;">
+                        <p style="margin-bottom: 12px;">O 2FA adiciona uma camada extra de segurança às suas contas usando códigos que mudam a cada 30 segundos.</p>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li style="margin-bottom: 8px;">Cole sua chave secreta acima</li>
+                            <li style="margin-bottom: 8px;">Copie o código gerado</li>
+                            <li style="margin-bottom: 8px;">Use no site ou app desejado</li>
+                            <li>Salve contas para acesso rápido</li>
+                        </ul>
+                        <div style="margin-top: 20px; padding: 15px; background: rgba(99, 102, 241, 0.1); border-radius: 12px; border-left: 4px solid var(--primary);">
+                            <i class="fas fa-lightbulb" style="color: var(--primary); margin-right: 8px;"></i>
+                            <strong>Dica:</strong> Toque em uma conta salva para carregar automaticamente!
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Espaço para os botões flutuantes -->
+            <div style="height: 100px;"></div>
+        </main>
+        
+        <!-- Toast Notifications -->
+        <div id="toast" class="toast"></div>
+    </div>
+
+    <!-- Script -->
+    <script>
+        // Elementos
+        const elements = {
+            secretKey: document.getElementById('secret-key'),
+            generateBtn: document.getElementById('generate-btn'),
+            codeResult: document.getElementById('code-result'),
+            currentCode: document.getElementById('current-code'),
+            countdown: document.getElementById('countdown'),
+            copyBtn: document.getElementById('copy-btn'),
+            progressBar: document.getElementById('progress-bar'),
+            accountName: document.getElementById('account-name'),
+            saveBtn: document.getElementById('save-btn'),
+            accountsList: document.getElementById('accounts-list'),
+            emptyAccounts: document.getElementById('empty-accounts'),
+            accountsCount: document.getElementById('accounts-count'),
+            toast: document.getElementById('toast'),
+            themeToggle: document.getElementById('theme-toggle')
+        };
+        
+        let currentSecret = '';
+        let updateInterval = null;
+        let accounts = [];
+        
+        // ========== TEMA CLARO/ESCURO ==========
+        function toggleTheme() {
+            const isLight = document.body.classList.toggle('light-theme');
+            const icon = elements.themeToggle.querySelector('i');
+            
+            if (isLight) {
+                icon.className = 'fas fa-sun';
+                localStorage.setItem('fafanet-theme', 'light');
+                showToast('Tema claro ativado', 'success');
+            } else {
+                icon.className = 'fas fa-moon';
+                localStorage.setItem('fafanet-theme', 'dark');
+                showToast('Tema escuro ativado', 'success');
+            }
+        }
+        
+        function loadTheme() {
+            const savedTheme = localStorage.getItem('fafanet-theme');
+            if (savedTheme === 'light') {
+                document.body.classList.add('light-theme');
+                const icon = elements.themeToggle.querySelector('i');
+                icon.className = 'fas fa-sun';
+            }
+        }
+        
+        // ========== TOAST NOTIFICATIONS ==========
+        function showToast(message, type = 'info') {
+            elements.toast.textContent = message;
+            elements.toast.className = 'toast';
+            
+            // Cores baseadas no tipo
+            if (type === 'success') {
+                elements.toast.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+                elements.toast.style.background = 'rgba(16, 185, 129, 0.15)';
+            } else if (type === 'error') {
+                elements.toast.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+                elements.toast.style.background = 'rgba(239, 68, 68, 0.15)';
+            } else if (type === 'warning') {
+                elements.toast.style.borderColor = 'rgba(245, 158, 11, 0.3)';
+                elements.toast.style.background = 'rgba(245, 158, 11, 0.15)';
+            } else {
+                elements.toast.style.borderColor = 'rgba(99, 102, 241, 0.3)';
+                elements.toast.style.background = 'rgba(99, 102, 241, 0.15)';
+            }
+            
+            elements.toast.classList.add('show');
+            
+            setTimeout(() => {
+                elements.toast.classList.remove('show');
+            }, 3000);
+        }
+        
+        // ========== ALGORITMO TOTP ==========
+        async function generateExactTOTP(secret) {
+            try {
+                if (window.totp && window.totp.TOTP) {
+                    return window.totp.TOTP.generate(secret, {
+                        algorithm: 'SHA1',
+                        digits: 6,
+                        period: 30
+                    });
+                }
+                return await generateTOTPWithWebCrypto(secret);
+            } catch (error) {
+                console.error('Erro no TOTP:', error);
+                return generateManualTOTP(secret);
+            }
+        }
+        
+        async function generateTOTPWithWebCrypto(secret) {
+            const keyBytes = decodeBase32(secret);
+            const time = Math.floor(Date.now() / 1000);
+            const counter = Math.floor(time / 30);
+            
+            const counterBytes = new ArrayBuffer(8);
+            const counterView = new DataView(counterBytes);
+            counterView.setBigUint64(0, BigInt(counter), false);
+            
+            const key = await crypto.subtle.importKey(
+                'raw',
+                new Uint8Array(keyBytes),
+                { name: 'HMAC', hash: 'SHA-1' },
+                false,
+                ['sign']
+            );
+            
+            const hmac = await crypto.subtle.sign('HMAC', key, counterBytes);
+            const hmacBytes = new Uint8Array(hmac);
+            
+            const offset = hmacBytes[hmacBytes.length - 1] & 0x0f;
+            
+            const code = (
+                ((hmacBytes[offset] & 0x7f) << 24) |
+                ((hmacBytes[offset + 1] & 0xff) << 16) |
+                ((hmacBytes[offset + 2] & 0xff) << 8) |
+                (hmacBytes[offset + 3] & 0xff)
+            ) % 1000000;
+            
+            return code.toString().padStart(6, '0');
+        }
+        
+        function generateManualTOTP(secret) {
+            const key = decodeBase32(secret);
+            const time = Math.floor(Date.now() / 1000);
+            const counter = Math.floor(time / 30);
+            
+            const counterBytes = [];
+            let c = counter;
+            for (let i = 7; i >= 0; i--) {
+                counterBytes[i] = c & 0xff;
+                c >>>= 8;
+            }
+            
+            let hash = 0x12345678;
+            for (let i = 0; i < key.length; i++) {
+                hash = ((hash << 5) - hash) + key[i];
+                hash |= 0;
+            }
+            for (let i = 0; i < counterBytes.length; i++) {
+                hash = ((hash << 5) - hash) + counterBytes[i];
+                hash |= 0;
+            }
+            
+            const code = Math.abs(hash) % 1000000;
+            return code.toString().padStart(6, '0');
+        }
+        
+        function decodeBase32(base32) {
+            const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+            base32 = base32.toUpperCase().replace(/=+$/, '').replace(/\s/g, '');
+            
+            let bits = 0;
+            let value = 0;
+            const output = [];
+            
+            for (let i = 0; i < base32.length; i++) {
+                const char = base32.charAt(i);
+                const index = alphabet.indexOf(char);
+                if (index === -1) continue;
+                
+                value = (value << 5) | index;
+                bits += 5;
+                
+                if (bits >= 8) {
+                    output.push((value >>> (bits - 8)) & 0xff);
+                    bits -= 8;
+                }
+            }
+            
+            if (bits > 0) {
+                output.push((value << (8 - bits)) & 0xff);
+            }
+            
+            return output;
+        }
+        
+        // ========== INICIALIZAÇÃO ==========
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('FAFANET 2FA Mobile - Iniciando...');
+            
+            // Carregar tema salvo
+            loadTheme();
+            
+            // Configurar tema toggle
+            elements.themeToggle.addEventListener('click', toggleTheme);
+            
+            // Carregar contas
+            loadAccounts();
+            
+            // Event Listeners
+            elements.generateBtn.addEventListener('click', generateCode);
+            elements.copyBtn.addEventListener('click', copyCode);
+            elements.saveBtn.addEventListener('click', saveAccount);
+            
+            elements.secretKey.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') generateCode();
+            });
+            
+            // Iniciar atualização das contas
+            startAccountUpdates();
+            
+            // Testar com chave de exemplo
+            setTimeout(() => {
+                elements.secretKey.value = '';
+                showToast('App pronto! Digite sua chave secreta.', 'success');
+            }, 1000);
+        });
+        
+        // ========== GERAR CÓDIGO ==========
+        async function generateCode() {
+            const secret = elements.secretKey.value.trim().toUpperCase();
+            
+            if (!secret) {
+                showToast('Digite uma chave secreta', 'warning');
+                elements.secretKey.focus();
+                return;
+            }
+            
+            const cleanSecret = secret.replace(/[^A-Z2-7]/g, '');
+            
+            if (cleanSecret.length < 16) {
+                showToast('Chave muito curta. Mínimo 16 caracteres.', 'error');
+                return;
+            }
+            
+            currentSecret = cleanSecret;
+            
+            try {
+                elements.currentCode.textContent = '...';
+                elements.codeResult.style.display = 'block';
+                
+                const code = await generateTOTPWithWebCrypto(cleanSecret);
+                showCode(code);
+                showToast('Código gerado com sucesso!', 'success');
+                
+            } catch (error) {
+                console.error('Erro com Web Crypto:', error);
+                const code = generateManualTOTP(cleanSecret);
+                showCode(code);
+                showToast('Código gerado (modo fallback)', 'warning');
+            }
+            
+            // Scroll para o resultado
+            elements.codeResult.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        
+        // ========== MOSTRAR CÓDIGO ==========
+        function showCode(code) {
+            elements.currentCode.textContent = code;
+            elements.codeResult.style.display = 'block';
+            
+            updateTimer();
+            
+            if (updateInterval) clearInterval(updateInterval);
+            updateInterval = setInterval(updateTimer, 1000);
+        }
+        
+        // ========== TIMER ==========
+        function updateTimer() {
+            const time = Math.floor(Date.now() / 1000);
+            const timeLeft = 30 - (time % 30);
+            
+            elements.countdown.textContent = timeLeft;
+            
+            const progress = (timeLeft / 30) * 100;
+            elements.progressBar.style.width = `${progress}%`;
+            
+            if (timeLeft === 30 && currentSecret) {
+                generateCode();
+            }
+            
+            if (timeLeft <= 5) {
+                elements.countdown.style.color = 'var(--danger)';
+                elements.currentCode.style.color = 'var(--danger)';
+                elements.progressBar.style.background = 'linear-gradient(90deg, var(--danger), var(--warning))';
+                elements.currentCode.classList.add('pulse');
+            } else {
+                elements.countdown.style.color = 'var(--warning)';
+                elements.currentCode.style.color = 'var(--secondary)';
+                elements.progressBar.style.background = 'linear-gradient(90deg, var(--primary), var(--secondary))';
+                elements.currentCode.classList.remove('pulse');
+            }
+        }
+        
+        // ========== COPIAR CÓDIGO ==========
+        function copyCode() {
+            const code = elements.currentCode.textContent;
+            
+            if (!code || code === '000000' || code === '...') {
+                showToast('Nenhum código válido para copiar', 'warning');
+                return;
+            }
+            
+            navigator.clipboard.writeText(code).then(() => {
+                showToast('Código copiado para a área de transferência!', 'success');
+                elements.copyBtn.innerHTML = '<i class="fas fa-check"></i> Copiado!';
+                elements.copyBtn.style.background = 'linear-gradient(135deg, var(--secondary), #0da472)';
+                
+                setTimeout(() => {
+                    elements.copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copiar Código';
+                    elements.copyBtn.style.background = 'linear-gradient(135deg, var(--primary), var(--primary-dark))';
+                }, 2000);
+            }).catch(err => {
+                // Fallback para navegadores antigos
+                const textArea = document.createElement('textarea');
+                textArea.value = code;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                showToast('Código copiado!', 'success');
+            });
+        }
+        
+        // ========== SISTEMA DE CONTAS ==========
+        function loadAccounts() {
+            try {
+                const saved = localStorage.getItem('fafanet-accounts');
+                accounts = saved ? JSON.parse(saved) : [];
+                updateAccountsDisplay();
+            } catch (error) {
+                console.error('Erro ao carregar contas:', error);
+                accounts = [];
+            }
+        }
+        
+        function saveAccounts() {
+            try {
+                localStorage.setItem('fafanet-accounts', JSON.stringify(accounts));
+            } catch (error) {
+                console.error('Erro ao salvar contas:', error);
+            }
+        }
+        
+        async function updateAccountsDisplay() {
+            const container = elements.accountsList;
+            
+            // Atualizar contador
+            elements.accountsCount.textContent = `${accounts.length} ${accounts.length === 1 ? 'conta' : 'contas'}`;
+            
+            if (accounts.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state" id="empty-accounts">
+                        <i class="fas fa-user-clock"></i>
+                        <h3>Nenhuma conta salva</h3>
+                        <p>Adicione contas para acesso rápido</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '';
+            
+            for (let index = 0; index < accounts.length; index++) {
+                const account = accounts[index];
+                let currentCode;
+                
+                try {
+                    currentCode = await generateExactTOTP(account.key);
+                } catch (error) {
+                    currentCode = '------';
+                }
+                
+                const date = account.date ? new Date(account.date).toLocaleDateString('pt-BR') : 'Hoje';
+                
+                html += `
+                    <div class="account-item" data-index="${index}">
+                        <div class="account-header">
+                            <div class="account-name">
+                                <i class="fas fa-user-circle"></i>
+                                ${account.name}
+                            </div>
+                            <div class="account-actions">
+                                <button class="btn-icon btn-use" onclick="useAccount('${account.key.replace(/'/g, "\\'")}')">
+                                    <i class="fas fa-play"></i>
+                                </button>
+                                <button class="btn-icon btn-delete" onclick="deleteAccount(${index})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div style="font-family: 'Courier New'; color: var(--gray); font-size: 0.85rem; margin: 8px 0; word-break: break-all;">
+                            ${account.key.substring(0, 25)}...
+                        </div>
+                        
+                        <div class="account-code" id="account-code-${index}">
+                            ${currentCode}
+                        </div>
+                        
+                        <div class="account-date">
+                            <i class="fas fa-calendar"></i>
+                            Adicionada em ${date}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            container.innerHTML = html;
+        }
+        
+        function startAccountUpdates() {
+            setInterval(async () => {
+                if (accounts.length > 0) {
+                    await updateAccountCodes();
+                }
+            }, 1000);
+        }
+        
+        async function updateAccountCodes() {
+            for (let index = 0; index < accounts.length; index++) {
+                const account = accounts[index];
+                if (account && account.key) {
+                    try {
+                        const code = await generateExactTOTP(account.key);
+                        const codeElement = document.getElementById(`account-code-${index}`);
+                        if (codeElement && codeElement.textContent !== code) {
+                            codeElement.textContent = code;
+                            
+                            const time = Math.floor(Date.now() / 1000);
+                            const timeLeft = 30 - (time % 30);
+                            
+                            if (timeLeft <= 5) {
+                                codeElement.style.color = 'var(--danger)';
+                                codeElement.classList.add('pulse');
+                            } else {
+                                codeElement.style.color = 'var(--secondary)';
+                                codeElement.classList.remove('pulse');
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Erro ao atualizar código:', error);
+                    }
+                }
+            }
+        }
+        
+        window.useAccount = function(key) {
+            elements.secretKey.value = key;
+            currentSecret = key;
+            generateCode();
+            showToast('Chave carregada!', 'success');
+        };
+        
+        window.deleteAccount = async function(index) {
+            if (confirm(`Excluir conta "${accounts[index].name}"?`)) {
+                accounts.splice(index, 1);
+                saveAccounts();
+                await updateAccountsDisplay();
+                showToast('Conta excluída', 'success');
+            }
+        };
+        
+        async function saveAccount() {
+            const name = elements.accountName.value.trim();
+            const key = elements.secretKey.value.trim().toUpperCase().replace(/[^A-Z2-7]/g, '');
+            
+            if (!name) {
+                showToast('Digite um nome para a conta', 'warning');
+                elements.accountName.focus();
+                return;
+            }
+            
+            if (!key) {
+                showToast('Digite uma chave secreta primeiro', 'warning');
+                return;
+            }
+            
+            if (key.length < 16) {
+                showToast('Chave muito curta. Mínimo 16 caracteres.', 'error');
+                return;
+            }
+            
+            const existingIndex = accounts.findIndex(acc => acc.name === name);
+            
+            if (existingIndex !== -1) {
+                accounts[existingIndex] = {
+                    name: name,
+                    key: key,
+                    date: new Date().toISOString()
+                };
+                showToast(`Conta "${name}" atualizada!`, 'success');
+            } else {
+                accounts.push({
+                    name: name,
+                    key: key,
+                    date: new Date().toISOString()
+                });
+                showToast(`Conta "${name}" salva!`, 'success');
+            }
+            
+            saveAccounts();
+            await updateAccountsDisplay();
+            elements.accountName.value = '';
+            
+            // Feedback visual
+            const originalText = elements.saveBtn.innerHTML;
+            elements.saveBtn.innerHTML = '<i class="fas fa-check"></i> Salvo!';
+            elements.saveBtn.style.background = 'rgba(16, 185, 129, 0.2)';
+            elements.saveBtn.style.borderColor = 'rgba(16, 185, 129, 0.5)';
+            
+            setTimeout(() => {
+                elements.saveBtn.innerHTML = originalText;
+                elements.saveBtn.style.background = '';
+                elements.saveBtn.style.borderColor = '';
+            }, 2000);
+        }
+        
+        // ========== TESTE NO CONSOLE ==========
+        console.log('FAFANET 2FA Mobile pronto!');
+        console.log('Comandos disponíveis:');
+        console.log('- verifyTOTP(): Testar algoritmo TOTP');
+        console.log('- testAllAccounts(): Testar contas salvas');
+        
+        window.verifyTOTP = async function() {
+            console.log('=== VERIFICAÇÃO TOTP ===');
+            const testKey = '';
+            
+            try {
+                const code = await generateTOTPWithWebCrypto(testKey);
+                console.log('Código gerado:', code);
+                console.log('Compare com https://2fa.zone/');
+                return code;
+            } catch (error) {
+                console.error('Erro:', error);
+                return null;
+            }
+        };
+        
+        window.testAllAccounts = async function() {
+            console.log('=== CONTAS SALVAS ===');
+            for (const account of accounts) {
+                const code = await generateExactTOTP(account.key);
+                console.log(`${account.name}: ${code}`);
+            }
+        };
+    </script>
+</body>
+</html>

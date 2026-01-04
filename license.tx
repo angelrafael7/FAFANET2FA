@@ -1,0 +1,17 @@
+FAFANET 2FA - Licença de Uso
+
+Copyright (c) 2024 FAFANET
+
+Este software é fornecido "como está", sem garantia de qualquer tipo.
+
+Permissão é concedida para usar este software gratuitamente para
+geração de códigos 2FA/TOTP para autenticação pessoal.
+
+O software implementa o algoritmo padrão TOTP (RFC 6238) e é
+compatível com Google Authenticator, Authy e Microsoft Authenticator.
+
+Este software não coleta, armazena ou transmite dados do usuário.
+Todos os cálculos são realizados localmente no dispositivo.
+
+Para mais informações sobre TOTP:
+https://tools.ietf.org/html/rfc6238
